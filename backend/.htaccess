@@ -1,0 +1,10 @@
+# Defense in depth: if the document root is accidentally set to backend/
+# instead of backend/public/, this blocks direct web access to the
+# application, config and storage directories as well as the .env file.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(core|middleware|controllers|models|utils|routes|config|storage|database)(/|$) - [F]
+    RewriteRule ^\.env$ - [F]
+</IfModule>
+
+Options -Indexes

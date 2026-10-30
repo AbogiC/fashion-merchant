@@ -1,0 +1,13 @@
+<IfModule mod_rewrite.c>
+    # Route all non-file requests through the front controller.
+    RewriteEngine On
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^ index.php [QSA,L]
+</IfModule>
+
+# Never allow directory listings or access to PHP internals.
+Options -Indexes
+<FilesMatch "\.(env|json|sql|md)$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,10 @@
+# Environment file holds secrets – never commit it.
+.env
+
+# Runtime storage (rate-limit buckets, logs).
+storage/ratelimit/*
+storage/logs/*
+!storage/**/.gitkeep
+
+# Keep storage dirs tracked but empty.
+!.htaccess

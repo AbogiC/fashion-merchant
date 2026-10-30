@@ -173,6 +173,55 @@
   .hero-orb {
     background: radial-gradient(circle, rgba(201, 169, 98, .18), transparent 65%);
   }
+
+  .auth-field {
+    position: relative;
+    padding-top: 1.25rem;
+  }
+  .auth-input {
+    @apply w-full bg-transparent pb-2 text-sm text-luxury-black;
+    border: 0;
+    border-bottom: 1px solid rgba(10, 10, 10, .2);
+    padding-right: 2rem;
+    border-radius: 0;
+    transition: border-color .35s ease;
+  }
+  .auth-input:focus {
+    outline: none;
+    border-bottom-color: #c9a962;
+  }
+  .auth-label {
+    position: absolute;
+    left: 0;
+    top: 1.35rem;
+    font-size: .875rem;
+    color: #6b6b68;
+    pointer-events: none;
+    transform-origin: left top;
+    transition: transform .3s ease, color .3s ease;
+  }
+  .auth-input:focus + .auth-label,
+  .auth-input:not(:placeholder-shown) + .auth-label {
+    transform: translateY(-1.4rem) scale(.78);
+    color: #c9a962;
+  }
+  .auth-input-icon {
+    position: absolute;
+    right: 0;
+    top: 1.5rem;
+    font-size: .9rem;
+    line-height: 1;
+    color: #6b6b68;
+    transition: color .3s ease;
+  }
+  .auth-input-icon:hover {
+    color: #0a0a0a;
+  }
+  .auth-input:-webkit-autofill,
+  .auth-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0a0a0a;
+    transition: background-color 9999s ease-in-out 0s;
+  }
 }
 
 .reveal {
