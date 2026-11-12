@@ -144,3 +144,19 @@ CREATE TABLE IF NOT EXISTS home_marquee (
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     KEY idx_home_marquee_active (is_active, sort_order)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------------------------
+-- Seed: ensure the single home_settings row exists so the admin home editor
+-- always has something to update.
+-- ----------------------------------------------------------------------------
+
+INSERT IGNORE INTO home_settings (id) VALUES (1);
+
+-- ----------------------------------------------------------------------------
+-- Promoting an admin user
+-- ----------------------------------------------------------------------------
+-- The admin dashboard only admits accounts whose role is "admin". Register an
+-- account through the API (or insert a row), then promote it:
+--
+--   UPDATE users SET role = 'admin' WHERE email = 'you@example.com';
+-- ----------------------------------------------------------------------------

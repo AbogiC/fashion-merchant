@@ -80,9 +80,23 @@ session cookies.
    GOOGLE_CLIENT_SECRET=xxxxxxxx
    GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
    FRONTEND_URL=http://localhost:5173
+   ADMIN_URL=http://localhost:5174
+   CORS_ORIGIN=http://localhost:5173,http://localhost:5174
    ```
    `GOOGLE_REDIRECT_URI` must match the value registered in Google Cloud
-   exactly. `FRONTEND_URL` is where the user is sent after sign-in.
+   exactly. `FRONTEND_URL` is where the user is sent after sign-in. The admin
+   console uses the same OAuth client and callback, with
+   `/api/auth/google/redirect?context=admin`; `ADMIN_URL` is where the admin
+   console lives, and only accounts with the `admin` role can finish that flow.
+   Google sign-in creates a regular user account; it never grants admin access.
+   After the account's first Google sign-in, promote the trusted account in
+   MySQL, then try the admin sign-in again:
+   ```sql
+   UPDATE users SET role = 'admin' WHERE email = 'your-google-email@example.com';
+   ```
+   `CORS_ORIGIN` is a comma-separated list. Include both SPA origins when the
+   admin or frontend calls the API from a different origin; if the API is
+   reverse-proxied under the SPA's own origin, that origin does not need CORS.
 
 The first Google sign-in creates a passwordless account (or links Google to an
 existing account with the same verified email). Users can then sign in with

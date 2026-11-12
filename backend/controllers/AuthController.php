@@ -172,22 +172,29 @@ class AuthController
     /**
      * GET /api/auth/google/redirect
      * Start the OAuth flow: store a single-use state and send the user to Google.
+     *
+     * The optional ?context=admin flag makes the callback return to the admin
+     * console and rejects Google accounts that do not have the admin role.
      */
     public function googleRedirect(Request $request): void
     {
         header('Cache-Control: no-store');
 
+        $context = $request->query('context') === 'admin' ? 'admin' : 'site';
+
         if (!GoogleOAuth::isConfigured()) {
-            $this->googleError('Google sign-in is not configured.');
+            $this->googleError('Google sign-in is not configured.', $context);
         }
 
         $state = bin2hex(random_bytes(32));
-
-        Response::setCookie('google_oauth_state', $state, 600, [
+        $cookieOptions = [
             'secure'   => Env::get('APP_ENV', 'development') === 'production',
             'samesite' => 'Lax',
             'path'     => $this->authCookiePath(),
-        ]);
+        ];
+
+        Response::setCookie('google_oauth_state', $state, 600, $cookieOptions);
+        Response::setCookie('google_oauth_context', $context, 600, $cookieOptions);
 
         Response::redirect(GoogleOAuth::authUrl($state));
     }
@@ -207,12 +214,16 @@ class AuthController
             'path'     => $this->authCookiePath(),
         ];
 
+        $context = (string) $request->cookie('google_oauth_context', 'site');
+        $context = $context === 'admin' ? 'admin' : 'site';
+
         $expectedState = (string) $request->cookie('google_oauth_state', '');
         $state = (string) $request->query('state', '');
         Response::clearCookie('google_oauth_state', $cookieOptions);
+        Response::clearCookie('google_oauth_context', $cookieOptions);
 
         if ($request->query('error') !== null) {
-            $this->googleError('Google sign-in was cancelled.');
+            $this->googleError('Google sign-in was cancelled.', $context);
         }
 
         if (
@@ -220,12 +231,12 @@ class AuthController
             || $state === ''
             || !hash_equals($expectedState, $state)
         ) {
-            $this->googleError('The sign-in request could not be verified. Please try again.');
+            $this->googleError('The sign-in request could not be verified. Please try again.', $context);
         }
 
         $code = (string) $request->query('code', '');
         if ($code === '') {
-            $this->googleError('Google did not return an authorization code.');
+            $this->googleError('Google did not return an authorization code.', $context);
         }
 
         try {
@@ -233,7 +244,7 @@ class AuthController
             $profile = GoogleOAuth::userInfo((string) $tokens['access_token']);
         } catch (\Throwable $e) {
             error_log('Google OAuth error: ' . $e->getMessage());
-            $this->googleError('Unable to complete Google sign-in. Please try again.');
+            $this->googleError('Unable to complete Google sign-in. Please try again.', $context);
         }
 
         $googleId = (string) ($profile['sub'] ?? '');
@@ -246,7 +257,7 @@ class AuthController
         $avatar = isset($profile['picture']) ? (string) $profile['picture'] : null;
 
         if ($googleId === '' || $email === '' || !$emailVerified) {
-            $this->googleError('Google did not provide a verified email address.');
+            $this->googleError('Google did not provide a verified email address.', $context);
         }
 
         if ($name === '') {
@@ -260,7 +271,7 @@ class AuthController
 
             if ($existing !== null) {
                 if (!empty($existing['google_id']) && $existing['google_id'] !== $googleId) {
-                    $this->googleError('This email is already linked to another Google account.');
+                    $this->googleError('This email is already linked to another Google account.', $context);
                 }
                 User::linkGoogle((int) $existing['id'], $googleId, $avatar);
                 $user = User::findById((int) $existing['id']);
@@ -274,25 +285,34 @@ class AuthController
         }
 
         if ($user === null) {
-            $this->googleError('Unable to create your account.');
+            $this->googleError('Unable to create your account.', $context);
+        }
+
+        // Admin console sign-in is restricted to accounts with the admin role.
+        if ($context === 'admin' && ($user['role'] ?? 'user') !== 'admin') {
+            $this->googleError('This Google account does not have administrator access.', 'admin');
         }
 
         User::updateLastLogin((int) $user['id']);
         $this->issueTokens($user);
 
-        Response::redirect($this->frontendUrl('/login?oauth=success'));
+        Response::redirect($this->frontendUrl('/login?oauth=success', $context));
     }
 
     /** Send the browser back to the frontend with a human-readable error. */
-    private function googleError(string $message): never
+    private function googleError(string $message, string $context = 'site'): never
     {
         $query = http_build_query(['oauth' => 'error', 'message' => $message]);
-        Response::redirect($this->frontendUrl('/login?' . $query));
+        Response::redirect($this->frontendUrl('/login?' . $query, $context));
     }
 
-    private function frontendUrl(string $path): string
+    private function frontendUrl(string $path, string $context = 'site'): string
     {
-        return rtrim(Env::get('FRONTEND_URL', 'http://localhost:5173'), '/') . $path;
+        $base = $context === 'admin'
+            ? Env::get('ADMIN_URL', 'http://localhost:5174')
+            : Env::get('FRONTEND_URL', 'http://localhost:5173');
+
+        return rtrim($base, '/') . $path;
     }
 
     private function authCookiePath(): string

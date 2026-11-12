@@ -11,6 +11,7 @@ use App\Core\Database;
  */
 class Collection
 {
+    /** Public, active collections only (used by the marketing site). */
     public static function allActive(): array
     {
         $rows = Database::query(
@@ -28,5 +29,95 @@ class Collection
             'monogram'  => $row['monogram'],
             'image_url' => $row['image_url'],
         ], $rows);
+    }
+
+    /** All collections including inactive ones (admin dashboard). */
+    public static function all(): array
+    {
+        $rows = Database::query(
+            'SELECT * FROM collections ORDER BY sort_order ASC, id ASC',
+        )->fetchAll();
+
+        return array_map(static fn(array $row): array => self::cast($row), $rows);
+    }
+
+    public static function find(int $id): ?array
+    {
+        $row = Database::query(
+            'SELECT * FROM collections WHERE id = ? LIMIT 1',
+            [$id],
+        )->fetch();
+
+        return $row ? self::cast($row) : null;
+    }
+
+    public static function create(array $data): int
+    {
+        $pdo = Database::connection();
+        $pdo->prepare(
+            'INSERT INTO collections (name, season, pieces, monogram, image_url, sort_order, is_active)
+             VALUES (?, ?, ?, ?, ?, ?, ?)',
+        )->execute([
+            $data['name'],
+            $data['season'] ?? '',
+            (int) ($data['pieces'] ?? 0),
+            self::nullable($data['monogram'] ?? null),
+            self::nullable($data['image_url'] ?? null),
+            (int) ($data['sort_order'] ?? 0),
+            (int) ($data['is_active'] ?? 1),
+        ]);
+
+        return (int) $pdo->lastInsertId();
+    }
+
+    public static function update(int $id, array $data): void
+    {
+        Database::query(
+            'UPDATE collections
+                SET name = ?, season = ?, pieces = ?, monogram = ?, image_url = ?,
+                    sort_order = ?, is_active = ?
+              WHERE id = ?',
+            [
+                $data['name'],
+                $data['season'] ?? '',
+                (int) ($data['pieces'] ?? 0),
+                self::nullable($data['monogram'] ?? null),
+                self::nullable($data['image_url'] ?? null),
+                (int) ($data['sort_order'] ?? 0),
+                (int) ($data['is_active'] ?? 1),
+                $id,
+            ],
+        );
+    }
+
+    public static function delete(int $id): void
+    {
+        Database::query('DELETE FROM collections WHERE id = ?', [$id]);
+    }
+
+    /** Normalise a value into NULL when it is an empty string. */
+    private static function nullable(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+        $value = (string) $value;
+        return $value === '' ? null : $value;
+    }
+
+    private static function cast(array $row): array
+    {
+        return [
+            'id'         => (int) $row['id'],
+            'name'       => $row['name'],
+            'season'     => $row['season'],
+            'pieces'     => (int) $row['pieces'],
+            'monogram'   => $row['monogram'],
+            'image_url'  => $row['image_url'],
+            'sort_order' => (int) $row['sort_order'],
+            'is_active'  => (bool) $row['is_active'],
+            'created_at' => $row['created_at'] ?? null,
+            'updated_at' => $row['updated_at'] ?? null,
+        ];
     }
 }
