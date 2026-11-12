@@ -19,7 +19,7 @@ const social = ['Instagram', 'Pinterest', 'LinkedIn']
     <div class="luxury-container py-16 md:py-24">
       <div class="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
         <div v-reveal class="lg:col-span-2">
-          <RouterLink to="/" class="text-3xl font-serif tracking-luxury">MAISON</RouterLink>
+          <RouterLink to="/" class="text-3xl font-serif tracking-luxury">AUBUNWORLD</RouterLink>
           <p class="mt-6 max-w-sm text-sm leading-relaxed text-luxury-cream/60">
             Quiet luxury, crafted with intention. Timeless pieces designed to become part of your story.
           </p>

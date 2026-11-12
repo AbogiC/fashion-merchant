@@ -112,7 +112,7 @@ onUnmounted(() => {
           class="group flex shrink-0 items-center text-2xl md:text-3xl font-serif tracking-luxury text-luxury-black"
           @click="isOpen = false"
         >
-          <span class="transition-all duration-500 group-hover:tracking-[0.4em]">MAISON</span>
+          <span class="transition-all duration-500 group-hover:tracking-[0.4em]">AUBUNWORLD</span>
         </RouterLink>
 
         <nav class="hidden lg:flex items-center gap-6 xl:gap-9">

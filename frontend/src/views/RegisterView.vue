@@ -44,7 +44,7 @@ async function onSubmit() {
     <main class="flex w-full items-center justify-center px-6 py-16 lg:order-1 lg:w-1/2">
       <div class="w-full max-w-md animate-fade-up">
         <RouterLink to="/" class="mb-12 block text-center text-2xl font-serif tracking-[0.4em] text-luxury-black lg:hidden">
-          MAISON
+          AUBUNWORLD
         </RouterLink>
 
         <p class="section-subtitle mb-4 text-center">Become a Member</p>
@@ -150,7 +150,7 @@ async function onSubmit() {
       <div class="hero-orb absolute -left-1/4 bottom-1/4 h-80 w-80 rounded-full blur-3xl" style="animation: float 9s ease-in-out infinite;"></div>
       <div class="relative z-10 flex w-full flex-col justify-between p-16">
         <RouterLink to="/" class="text-2xl font-serif tracking-[0.4em] text-luxury-cream">
-          MAISON
+          AUBUNWORLD
         </RouterLink>
         <div>
           <p class="mb-4 text-xs uppercase tracking-luxury text-luxury-gold">Membership</p>
