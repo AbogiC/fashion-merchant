@@ -1,24 +1,41 @@
 <script setup>
-const featured = [
-  { tag: 'Outerwear', title: 'The Sculpted Coat', copy: 'Structure meets softness', letter: 'O' },
-  { tag: 'Knitwear', title: 'Cashmere Collection', copy: 'Warmth, refined', letter: 'K' },
-]
+import { onMounted, ref } from 'vue'
+import { contentApi } from '@/api/content'
 
-const stats = [
-  { value: '25', suffix: '+', label: 'Years of Craft' },
-  { value: '100', suffix: '%', label: 'Natural Fibres' },
-  { value: '12', suffix: '', label: 'Artisan Ateliers' },
-  { value: '∞', suffix: '', label: 'Timeless Pieces' },
-]
+const home = ref({
+  hero: {
+    eyebrow: '',
+    title_primary: '',
+    title_secondary: '',
+    description: '',
+    cta_label: '',
+    cta_url: '/collection',
+  },
+  featured: [],
+  stats: [],
+  marquee: [],
+  philosophy: {
+    subtitle: '',
+    title_primary: '',
+    title_secondary: '',
+    body: [],
+    cta_label: '',
+    cta_url: '/about',
+    monogram: 'M',
+  },
+})
+const loading = ref(true)
+const error = ref('')
 
-const marquee = [
-  'Crafted with Intention',
-  'Slow Fashion',
-  'Natural Materials',
-  'Timeless Design',
-  'Hand Finished',
-  'Considered Details',
-]
+onMounted(async () => {
+  try {
+    home.value = await contentApi.home()
+  } catch (e) {
+    error.value = e.message || 'Unable to load the home page.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -30,16 +47,22 @@ const marquee = [
       <div class="hero-orb absolute -right-1/4 bottom-1/4 h-[24rem] w-[24rem] rounded-full blur-3xl" style="animation: float 9s ease-in-out infinite;"></div>
 
       <div class="relative z-10 px-6 text-center">
-        <p class="animate-fade-up mb-6 text-xs uppercase tracking-wide-luxury text-luxury-gold">Autumn / Winter 2025</p>
-        <h1 class="animate-fade-up anim-delay-1 mb-8 text-5xl font-serif font-light tracking-wide text-luxury-cream md:text-7xl lg:text-8xl">
-          Timeless<br />Elegance
-        </h1>
-        <p class="animate-fade-up anim-delay-2 mx-auto mb-10 max-w-md text-sm font-light leading-relaxed text-luxury-cream/70 md:text-base">
-          Discover the art of refined dressing. Each piece is crafted with intention, designed for the discerning individual.
-        </p>
-        <div class="animate-fade-up anim-delay-3">
-          <RouterLink to="/collection" class="luxury-btn-gold">Explore Collection</RouterLink>
-        </div>
+        <template v-if="loading">
+          <p class="animate-pulse text-xs uppercase tracking-luxury text-luxury-cream/50">Loading…</p>
+        </template>
+        <p v-else-if="error" class="mx-auto max-w-md text-sm text-red-300">{{ error }}</p>
+        <template v-else>
+          <p class="animate-fade-up mb-6 text-xs uppercase tracking-wide-luxury text-luxury-gold">{{ home.hero.eyebrow }}</p>
+          <h1 class="animate-fade-up anim-delay-1 mb-8 text-5xl font-serif font-light tracking-wide text-luxury-cream md:text-7xl lg:text-8xl">
+            {{ home.hero.title_primary }}<br />{{ home.hero.title_secondary }}
+          </h1>
+          <p class="animate-fade-up anim-delay-2 mx-auto mb-10 max-w-md text-sm font-light leading-relaxed text-luxury-cream/70 md:text-base">
+            {{ home.hero.description }}
+          </p>
+          <div class="animate-fade-up anim-delay-3">
+            <RouterLink :to="home.hero.cta_url || '/collection'" class="luxury-btn-gold">{{ home.hero.cta_label }}</RouterLink>
+          </div>
+        </template>
       </div>
 
       <div class="animate-fade-in anim-delay-5 absolute bottom-10 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-3">
@@ -59,14 +82,21 @@ const marquee = [
 
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
           <RouterLink
-            v-for="(item, i) in featured"
-            :key="item.title"
-            to="/collection"
+            v-for="(item, i) in home.featured"
+            :key="item.id"
+            :to="item.link_url || '/collection'"
             v-reveal="i"
             class="media group relative block aspect-[4/5] overflow-hidden"
           >
+            <img
+              v-if="item.image_url"
+              :src="item.image_url"
+              :alt="item.title"
+              loading="lazy"
+              class="absolute inset-0 h-full w-full object-cover"
+            />
             <div class="media-inner"></div>
-            <div class="media-monogram">{{ item.letter }}</div>
+            <div v-if="!item.image_url" class="media-monogram">{{ item.monogram || item.title.charAt(0) }}</div>
             <span class="media-sheen"></span>
             <div class="absolute inset-0 z-10 bg-gradient-to-t from-luxury-black/80 via-luxury-black/10 to-transparent"></div>
             <div class="absolute inset-x-8 bottom-8 z-20 flex items-end justify-between">
@@ -89,7 +119,7 @@ const marquee = [
         <div class="marquee-track">
           <span v-for="n in 2" :key="n" class="flex shrink-0 items-center">
             <span
-              v-for="word in marquee"
+              v-for="word in home.marquee"
               :key="word + n"
               class="mx-8 text-sm uppercase tracking-luxury text-luxury-gray/70"
             >
@@ -103,7 +133,7 @@ const marquee = [
     <section class="bg-luxury-black py-20 md:py-28">
       <div class="luxury-container">
         <div class="grid grid-cols-2 gap-10 md:grid-cols-4">
-          <div v-for="(stat, i) in stats" :key="stat.label" v-reveal="i" class="text-center">
+          <div v-for="(stat, i) in home.stats" :key="stat.id" v-reveal="i" class="text-center">
             <p class="font-serif text-4xl text-luxury-gold md:text-5xl">
               {{ stat.value }}<span class="text-2xl">{{ stat.suffix }}</span>
             </p>
@@ -117,19 +147,18 @@ const marquee = [
       <div class="luxury-container">
         <div class="grid grid-cols-1 items-center gap-16 lg:grid-cols-2">
           <div v-reveal>
-            <p class="section-subtitle mb-6">Our Philosophy</p>
-            <h2 class="section-title mb-8">Crafted with<br />Intention</h2>
-            <p class="mb-6 leading-relaxed text-luxury-gray">
-              We believe in the quiet power of exceptional craftsmanship. Every seam, every stitch, every detail is considered—not for show, but for the wearer.
-            </p>
-            <p class="mb-10 leading-relaxed text-luxury-gray">
-              Our pieces are designed to transcend seasons, to become part of your story. This is slow fashion, in the truest sense.
-            </p>
-            <RouterLink to="/about" class="luxury-btn">Our Story</RouterLink>
+            <p class="section-subtitle mb-6">{{ home.philosophy.subtitle }}</p>
+            <h2 class="section-title mb-8">{{ home.philosophy.title_primary }}<br />{{ home.philosophy.title_secondary }}</h2>
+            <div class="mb-10 space-y-6">
+              <p v-for="(paragraph, i) in home.philosophy.body" :key="i" class="leading-relaxed text-luxury-gray">
+                {{ paragraph }}
+              </p>
+            </div>
+            <RouterLink :to="home.philosophy.cta_url || '/about'" class="luxury-btn">{{ home.philosophy.cta_label }}</RouterLink>
           </div>
           <div v-reveal="1" class="media group relative aspect-square">
             <div class="media-inner"></div>
-            <div class="media-monogram">M</div>
+            <div class="media-monogram">{{ home.philosophy.monogram }}</div>
             <span class="media-sheen"></span>
           </div>
         </div>

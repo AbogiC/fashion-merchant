@@ -54,6 +54,11 @@ backend/
 | GET    | `/api/auth/me`       | logged in | Current user profile         |
 | GET    | `/api/auth/google/redirect` | guest | Start Google OAuth flow |
 | GET    | `/api/auth/google/callback` | guest | Google OAuth callback (sets cookies) |
+| GET    | `/api/content/home`  | public | Home page content             |
+| GET    | `/api/collections`   | public | Collection categories         |
+| GET    | `/api/guidelines`    | public | Style guidelines              |
+| GET    | `/api/mix-match`     | public | Curated looks                 |
+| GET    | `/api/news`          | public | Journal entries               |
 
 ## Google sign-in
 
@@ -96,15 +101,46 @@ either method.
 - **`invalid_client`** – the client ID/secret pair in `.env` is wrong or belongs
   to a different OAuth client.
 
+## Site content
+
+The public pages (home, collection, guidelines, mix & match and news) load
+their copy from the database through the read-only `/api/content/home`,
+`/api/collections`, `/api/guidelines`, `/api/mix-match` and `/api/news`
+endpoints.
+
+Content tables:
+
+| Table           | Page / section              |
+|-----------------|-----------------------------|
+| `collections`   | Collection categories       |
+| `guidelines`    | Style guidelines            |
+| `looks`         | Mix & Match looks           |
+| `news`          | News & Stories              |
+| `home_settings` | Home hero + philosophy      |
+| `home_featured` | Home "Curated Essentials"   |
+| `home_stats`    | Home statistics             |
+| `home_marquee`  | Home scrolling marquee      |
+
+Rows are ordered by `sort_order`; set `is_active = 0` to hide an item. Edit the
+rows directly in MySQL/phpMyAdmin for now. `seed_content.sql` contains the
+initial copy and is safe to re-run (it uses `INSERT IGNORE` with explicit ids).
+
 ## Setup
 
 1. **Create the database** (run the schema):
    ```bash
    mysql -u root -p < backend/database/schema.sql
    ```
-   Upgrading an existing database? Run the Google migration once:
+   Then load the initial page content (the `--default-character-set` flag keeps
+   UTF-8 characters such as `—` and `·` intact):
+   ```bash
+   mysql -u root -p --default-character-set=utf8mb4 fashion_merchant < backend/database/seed_content.sql
+   ```
+   Upgrading an existing database? Run the migrations once, then the seed:
    ```bash
    mysql -u root -p fashion_merchant < backend/database/migrations/2026_11_12_add_google_oauth.sql
+   mysql -u root -p fashion_merchant < backend/database/migrations/2026_11_12_add_content_tables.sql
+   mysql -u root -p --default-character-set=utf8mb4 fashion_merchant < backend/database/seed_content.sql
    ```
 2. **Configure environment:**
    ```bash

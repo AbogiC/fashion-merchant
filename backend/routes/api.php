@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Controllers\AuthController;
+use App\Controllers\ContentController;
 use App\Core\Router;
 use App\Middleware\AuthMiddleware;
 use App\Middleware\RateLimitMiddleware;
@@ -37,4 +38,11 @@ return function (Router $router): void {
     // Auth – requires a valid access token.
     $router->post('/auth/logout', [AuthController::class, 'logout'], [AuthMiddleware::class]);
     $router->get('/auth/me', [AuthController::class, 'me'], [AuthMiddleware::class]);
+
+    // Public site content.
+    $router->get('/content/home', [ContentController::class, 'home']);
+    $router->get('/collections', [ContentController::class, 'collections']);
+    $router->get('/guidelines', [ContentController::class, 'guidelines']);
+    $router->get('/mix-match', [ContentController::class, 'mixMatch']);
+    $router->get('/news', [ContentController::class, 'news']);
 };

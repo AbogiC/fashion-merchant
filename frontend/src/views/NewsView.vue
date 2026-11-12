@@ -1,21 +1,21 @@
 <script setup>
-const news = [
-  {
-    date: 'November 2025',
-    title: 'The Art of Slow Fashion',
-    excerpt: 'Why we believe in quality over quantity, and how it shapes every decision we make.'
-  },
-  {
-    date: 'October 2025',
-    title: 'Behind the Seams: Our Atelier',
-    excerpt: 'A glimpse into the craftsmanship and hands that bring our collections to life.'
-  },
-  {
-    date: 'September 2025',
-    title: 'AW25 Lookbook Preview',
-    excerpt: 'An exclusive first look at the silhouettes and textures defining the season ahead.'
-  },
-]
+import { onMounted, ref } from 'vue'
+import { contentApi } from '@/api/content'
+
+const news = ref([])
+const loading = ref(true)
+const error = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await contentApi.news()
+    news.value = res.news ?? []
+  } catch (e) {
+    error.value = e.message || 'Unable to load the journal.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -27,10 +27,18 @@ const news = [
           <h1 class="section-title">News &amp; Stories</h1>
         </div>
 
+        <p v-if="loading" class="mb-12 text-center text-xs uppercase tracking-luxury text-luxury-gray">
+          Loading…
+        </p>
+        <p v-else-if="error" class="mb-12 text-center text-sm text-red-600">{{ error }}</p>
+        <p v-else-if="news.length === 0" class="mb-12 text-center text-sm text-luxury-gray">
+          No stories published yet.
+        </p>
+
         <div class="mx-auto max-w-3xl space-y-12 md:space-y-16">
           <article
             v-for="(item, i) in news"
-            :key="item.title"
+            :key="item.id"
             v-reveal="i"
             class="group cursor-pointer border-b border-luxury-black/10 pb-12 transition-colors duration-500 hover:border-luxury-gold md:pb-16"
           >

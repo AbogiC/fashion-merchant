@@ -1,10 +1,21 @@
 <script setup>
-const collections = [
-  { name: 'Tailoring', season: 'AW 2025', pieces: 24 },
-  { name: 'Outerwear', season: 'AW 2025', pieces: 18 },
-  { name: 'Knitwear', season: 'AW 2025', pieces: 32 },
-  { name: 'Accessories', season: 'AW 2025', pieces: 45 },
-]
+import { onMounted, ref } from 'vue'
+import { contentApi } from '@/api/content'
+
+const collections = ref([])
+const loading = ref(true)
+const error = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await contentApi.collections()
+    collections.value = res.collections ?? []
+  } catch (e) {
+    error.value = e.message || 'Unable to load the collection.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -16,15 +27,30 @@ const collections = [
           <h1 class="section-title">The Collection</h1>
         </div>
 
+        <p v-if="loading" class="mb-12 text-center text-xs uppercase tracking-luxury text-luxury-gray">
+          Loading…
+        </p>
+        <p v-else-if="error" class="mb-12 text-center text-sm text-red-600">{{ error }}</p>
+        <p v-else-if="collections.length === 0" class="mb-12 text-center text-sm text-luxury-gray">
+          No collections published yet.
+        </p>
+
         <div class="grid grid-cols-1 gap-6 md:grid-cols-2 md:gap-8">
           <div
             v-for="(item, i) in collections"
-            :key="item.name"
+            :key="item.id"
             v-reveal="i"
             class="media group relative aspect-[3/4] cursor-pointer overflow-hidden"
           >
+            <img
+              v-if="item.image_url"
+              :src="item.image_url"
+              :alt="item.name"
+              loading="lazy"
+              class="absolute inset-0 h-full w-full object-cover"
+            />
             <div class="media-inner"></div>
-            <div class="media-monogram">{{ item.name.charAt(0) }}</div>
+            <div v-if="!item.image_url" class="media-monogram">{{ item.monogram || item.name.charAt(0) }}</div>
             <span class="media-sheen"></span>
             <div class="absolute inset-0 z-10 bg-gradient-to-t from-luxury-black/80 via-luxury-black/10 to-transparent"></div>
             <div class="absolute inset-x-8 bottom-8 z-20 flex items-end justify-between">

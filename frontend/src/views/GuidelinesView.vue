@@ -1,26 +1,21 @@
 <script setup>
-const guidelines = [
-  {
-    number: '01',
-    title: 'Fit First',
-    description: 'A garment should move with you, not against you. We prioritize silhouette and drape over fleeting trends.'
-  },
-  {
-    number: '02',
-    title: 'Quality Over Quantity',
-    description: 'Invest in fewer, better pieces. Each item in our collection is designed to be worn for decades, not seasons.'
-  },
-  {
-    number: '03',
-    title: 'Neutral Foundations',
-    description: 'Build your wardrobe around a palette of blacks, creams, and earth tones. These are the colors that endure.'
-  },
-  {
-    number: '04',
-    title: 'Considered Details',
-    description: 'Pay attention to the small things—the weight of a button, the finish of a hem. These are the marks of true quality.'
-  },
-]
+import { onMounted, ref } from 'vue'
+import { contentApi } from '@/api/content'
+
+const guidelines = ref([])
+const loading = ref(true)
+const error = ref('')
+
+onMounted(async () => {
+  try {
+    const res = await contentApi.guidelines()
+    guidelines.value = res.guidelines ?? []
+  } catch (e) {
+    error.value = e.message || 'Unable to load the guidelines.'
+  } finally {
+    loading.value = false
+  }
+})
 </script>
 
 <template>
@@ -32,10 +27,18 @@ const guidelines = [
           <h1 class="section-title">Style Guidelines</h1>
         </div>
 
+        <p v-if="loading" class="mb-12 text-center text-xs uppercase tracking-luxury text-luxury-gray">
+          Loading…
+        </p>
+        <p v-else-if="error" class="mb-12 text-center text-sm text-red-600">{{ error }}</p>
+        <p v-else-if="guidelines.length === 0" class="mb-12 text-center text-sm text-luxury-gray">
+          No guidelines published yet.
+        </p>
+
         <div class="grid grid-cols-1 gap-12 md:grid-cols-2 md:gap-16">
           <div
             v-for="(item, i) in guidelines"
-            :key="item.number"
+            :key="item.id"
             v-reveal="i % 2"
             class="group border-t border-luxury-black/10 pt-8 transition-colors duration-500 hover:border-luxury-gold"
           >
