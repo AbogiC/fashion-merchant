@@ -4,6 +4,9 @@
 # Runtime storage (rate-limit buckets, logs).
 storage/ratelimit/*
 storage/logs/*
+
+# Local CA bundle used for TLS verification when PHP has no system CA store.
+storage/cacert.pem
 !storage/**/.gitkeep
 
 # Keep storage dirs tracked but empty.

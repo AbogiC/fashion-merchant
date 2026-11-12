@@ -138,7 +138,15 @@ onUnmounted(() => {
                   :aria-expanded="accountOpen"
                   aria-label="Account menu"
                 >
+                  <img
+                    v-if="auth.user.avatar_url"
+                    :src="auth.user.avatar_url"
+                    :alt="auth.user.name"
+                    referrerpolicy="no-referrer"
+                    class="h-9 w-9 rounded-full border border-luxury-gold/60 object-cover"
+                  />
                   <span
+                    v-else
                     class="flex h-9 w-9 items-center justify-center rounded-full border border-luxury-gold/60 text-[11px] font-medium tracking-wide text-luxury-black transition-colors duration-300 group-hover:bg-luxury-gold/10"
                   >
                     {{ userInitials }}

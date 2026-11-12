@@ -28,6 +28,15 @@ class Response
         self::json($payload, $status);
     }
 
+    /** Redirect the browser and stop execution. */
+    public static function redirect(string $url, int $status = 302): never
+    {
+        // Strip CR/LF to prevent header injection.
+        $url = str_replace(["\r", "\n"], '', $url);
+        header('Location: ' . $url, true, $status);
+        exit;
+    }
+
     /** Set an HttpOnly cookie. Flags default to secure in production. */
     public static function setCookie(
         string $name,

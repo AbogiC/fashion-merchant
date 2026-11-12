@@ -26,6 +26,14 @@ return function (Router $router): void {
         RateLimitMiddleware::class . ':refresh,10,60',
     ]);
 
+    // Google OAuth – full-page redirect flow (state cookie protects the callback).
+    $router->get('/auth/google/redirect', [AuthController::class, 'googleRedirect'], [
+        RateLimitMiddleware::class . ':google_redirect,20,60',
+    ]);
+    $router->get('/auth/google/callback', [AuthController::class, 'googleCallback'], [
+        RateLimitMiddleware::class . ':google_callback,20,60',
+    ]);
+
     // Auth – requires a valid access token.
     $router->post('/auth/logout', [AuthController::class, 'logout'], [AuthMiddleware::class]);
     $router->get('/auth/me', [AuthController::class, 'me'], [AuthMiddleware::class]);

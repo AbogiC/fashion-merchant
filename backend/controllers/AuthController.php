@@ -8,6 +8,7 @@ use App\Core\Env;
 use App\Core\Request;
 use App\Core\Response;
 use App\Models\User;
+use App\Utils\GoogleOAuth;
 use App\Utils\Hash;
 use App\Utils\Jwt;
 use App\Utils\Validator;
@@ -105,7 +106,8 @@ class AuthController
             Response::error('Too many failed attempts. Please try again in a few minutes.', 423);
         }
 
-        if (!Hash::verify($data['password'], $user['password_hash'])) {
+        // Google-only accounts have no password hash and cannot use this endpoint.
+        if (empty($user['password_hash']) || !Hash::verify($data['password'], $user['password_hash'])) {
             User::registerFailedAttempt((int) $user['id']);
             Response::error('These credentials do not match our records.', 401);
         }
@@ -165,5 +167,136 @@ class AuthController
         }
 
         Response::json(['user' => User::public($user)]);
+    }
+
+    /**
+     * GET /api/auth/google/redirect
+     * Start the OAuth flow: store a single-use state and send the user to Google.
+     */
+    public function googleRedirect(Request $request): void
+    {
+        header('Cache-Control: no-store');
+
+        if (!GoogleOAuth::isConfigured()) {
+            $this->googleError('Google sign-in is not configured.');
+        }
+
+        $state = bin2hex(random_bytes(32));
+
+        Response::setCookie('google_oauth_state', $state, 600, [
+            'secure'   => Env::get('APP_ENV', 'development') === 'production',
+            'samesite' => 'Lax',
+            'path'     => $this->authCookiePath(),
+        ]);
+
+        Response::redirect(GoogleOAuth::authUrl($state));
+    }
+
+    /**
+     * GET /api/auth/google/callback
+     * Validate the state, exchange the code and sign the user in.
+     */
+    public function googleCallback(Request $request): void
+    {
+        header('Cache-Control: no-store');
+
+        $secure = Env::get('APP_ENV', 'development') === 'production';
+        $cookieOptions = [
+            'secure'   => $secure,
+            'samesite' => 'Lax',
+            'path'     => $this->authCookiePath(),
+        ];
+
+        $expectedState = (string) $request->cookie('google_oauth_state', '');
+        $state = (string) $request->query('state', '');
+        Response::clearCookie('google_oauth_state', $cookieOptions);
+
+        if ($request->query('error') !== null) {
+            $this->googleError('Google sign-in was cancelled.');
+        }
+
+        if (
+            $expectedState === ''
+            || $state === ''
+            || !hash_equals($expectedState, $state)
+        ) {
+            $this->googleError('The sign-in request could not be verified. Please try again.');
+        }
+
+        $code = (string) $request->query('code', '');
+        if ($code === '') {
+            $this->googleError('Google did not return an authorization code.');
+        }
+
+        try {
+            $tokens = GoogleOAuth::exchangeCode($code);
+            $profile = GoogleOAuth::userInfo((string) $tokens['access_token']);
+        } catch (\Throwable $e) {
+            error_log('Google OAuth error: ' . $e->getMessage());
+            $this->googleError('Unable to complete Google sign-in. Please try again.');
+        }
+
+        $googleId = (string) ($profile['sub'] ?? '');
+        $email = strtolower(trim((string) ($profile['email'] ?? '')));
+        $emailVerified = filter_var(
+            $profile['email_verified'] ?? false,
+            FILTER_VALIDATE_BOOLEAN,
+        );
+        $name = trim((string) ($profile['name'] ?? ''));
+        $avatar = isset($profile['picture']) ? (string) $profile['picture'] : null;
+
+        if ($googleId === '' || $email === '' || !$emailVerified) {
+            $this->googleError('Google did not provide a verified email address.');
+        }
+
+        if ($name === '') {
+            $name = (string) strstr($email, '@', true);
+        }
+
+        $user = User::findByGoogleId($googleId);
+
+        if ($user === null) {
+            $existing = User::findByEmail($email);
+
+            if ($existing !== null) {
+                if (!empty($existing['google_id']) && $existing['google_id'] !== $googleId) {
+                    $this->googleError('This email is already linked to another Google account.');
+                }
+                User::linkGoogle((int) $existing['id'], $googleId, $avatar);
+                $user = User::findById((int) $existing['id']);
+            } else {
+                $id = User::createFromGoogle($name, $email, $googleId, $avatar);
+                $user = User::findById($id);
+            }
+        } else {
+            User::updateGoogleProfile((int) $user['id'], $name, $avatar);
+            $user = User::findById((int) $user['id']);
+        }
+
+        if ($user === null) {
+            $this->googleError('Unable to create your account.');
+        }
+
+        User::updateLastLogin((int) $user['id']);
+        $this->issueTokens($user);
+
+        Response::redirect($this->frontendUrl('/login?oauth=success'));
+    }
+
+    /** Send the browser back to the frontend with a human-readable error. */
+    private function googleError(string $message): never
+    {
+        $query = http_build_query(['oauth' => 'error', 'message' => $message]);
+        Response::redirect($this->frontendUrl('/login?' . $query));
+    }
+
+    private function frontendUrl(string $path): string
+    {
+        return rtrim(Env::get('FRONTEND_URL', 'http://localhost:5173'), '/') . $path;
+    }
+
+    private function authCookiePath(): string
+    {
+        return rtrim(Env::get('API_PREFIX', '/api'), '/') . '/auth';
     }
 }

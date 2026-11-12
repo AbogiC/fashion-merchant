@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import GoogleAuthButton from '@/components/GoogleAuthButton.vue'
 
 const router = useRouter()
 const auth = useAuthStore()
@@ -51,13 +52,21 @@ async function onSubmit() {
         <h1 class="section-title mb-2 text-center">Create Account</h1>
         <p class="mb-10 text-center text-sm text-luxury-gray">Join the Maison for an elevated experience.</p>
 
-        <form @submit.prevent="onSubmit" novalidate class="space-y-7">
-          <Transition name="page">
-            <p v-if="errors.form" class="rounded-sm border border-red-300/50 bg-red-50/60 px-4 py-3 text-xs tracking-wide text-red-700">
-              {{ errors.form }}
-            </p>
-          </Transition>
+        <Transition name="page">
+          <p v-if="errors.form" class="mb-6 rounded-sm border border-red-300/50 bg-red-50/60 px-4 py-3 text-xs tracking-wide text-red-700">
+            {{ errors.form }}
+          </p>
+        </Transition>
 
+        <GoogleAuthButton label="Sign up with Google" class="mb-8" />
+
+        <div class="mb-8 flex items-center gap-4">
+          <span class="h-px flex-1 bg-luxury-black/10"></span>
+          <span class="text-[10px] uppercase tracking-luxury text-luxury-gray">or register with email</span>
+          <span class="h-px flex-1 bg-luxury-black/10"></span>
+        </div>
+
+        <form @submit.prevent="onSubmit" novalidate class="space-y-7">
           <!-- Name -->
           <div class="auth-field">
             <input

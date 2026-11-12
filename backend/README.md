@@ -52,6 +52,49 @@ backend/
 | POST   | `/api/auth/refresh`  | refresh cookie | New access token           |
 | POST   | `/api/auth/logout`   | logged in | Clear auth cookies           |
 | GET    | `/api/auth/me`       | logged in | Current user profile         |
+| GET    | `/api/auth/google/redirect` | guest | Start Google OAuth flow |
+| GET    | `/api/auth/google/callback` | guest | Google OAuth callback (sets cookies) |
+
+## Google sign-in
+
+Google OAuth uses the server-side Authorization Code flow, so the client
+secret stays on the server and the SPA only receives the usual HttpOnly
+session cookies.
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) and
+   create (or select) a project.
+2. Configure the **OAuth consent screen** (External is fine for testing; add
+   your own Google account under *Test users* while the app is unverified).
+3. Go to **APIs & Services → Credentials → Create credentials → OAuth client ID**,
+   choose **Web application**, and add an **Authorized redirect URI**:
+   - Local: `http://localhost:8000/api/auth/google/callback`
+   - Production: `https://api.your-domain.com/api/auth/google/callback`
+4. Copy the **Client ID** and **Client secret** into `backend/.env`:
+   ```env
+   GOOGLE_CLIENT_ID=xxxxxxxx.apps.googleusercontent.com
+   GOOGLE_CLIENT_SECRET=xxxxxxxx
+   GOOGLE_REDIRECT_URI=http://localhost:8000/api/auth/google/callback
+   FRONTEND_URL=http://localhost:5173
+   ```
+   `GOOGLE_REDIRECT_URI` must match the value registered in Google Cloud
+   exactly. `FRONTEND_URL` is where the user is sent after sign-in.
+
+The first Google sign-in creates a passwordless account (or links Google to an
+existing account with the same verified email). Users can then sign in with
+either method.
+
+### Troubleshooting Google sign-in
+
+- **`redirect_uri_mismatch`** – the redirect URI registered in Google Cloud must
+  match `GOOGLE_REDIRECT_URI` character-for-character (`http`, `localhost`,
+  port `8000`, no trailing slash).
+- **`Unable to complete Google sign-in`** – check the PHP error log. A common
+  cause on Windows is `unable to get local issuer certificate`, meaning PHP has
+  no CA store. Download <https://curl.se/ca/cacert.pem> to
+  `backend/storage/cacert.pem` (used automatically), or set `GOOGLE_CA_BUNDLE`
+  / `curl.cainfo` in `php.ini`.
+- **`invalid_client`** – the client ID/secret pair in `.env` is wrong or belongs
+  to a different OAuth client.
 
 ## Setup
 
@@ -59,12 +102,17 @@ backend/
    ```bash
    mysql -u root -p < backend/database/schema.sql
    ```
+   Upgrading an existing database? Run the Google migration once:
+   ```bash
+   mysql -u root -p fashion_merchant < backend/database/migrations/2026_11_12_add_google_oauth.sql
+   ```
 2. **Configure environment:**
    ```bash
    cp backend/.env.example backend/.env
    ```
    Edit `DB_*` credentials and set a strong `JWT_SECRET`
-   (`php -r "echo bin2hex(random_bytes(32));"` to generate one).
+   (`php -r "echo bin2hex(random_bytes(32));"` to generate one), then fill in
+   the Google OAuth values described above.
 3. **Serve the API** with PHP's built-in server (development only):
    ```bash
    php -S localhost:8000 -t backend/public

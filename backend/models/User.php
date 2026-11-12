@@ -31,6 +31,16 @@ class User
         return $row ?: null;
     }
 
+    public static function findByGoogleId(string $googleId): ?array
+    {
+        $row = Database::query(
+            'SELECT * FROM users WHERE google_id = ? LIMIT 1',
+            [$googleId],
+        )->fetch();
+
+        return $row ?: null;
+    }
+
     public static function create(string $name, string $email, string $passwordHash): int
     {
         $pdo = Database::connection();
@@ -39,6 +49,40 @@ class User
         )->execute([$name, $email, $passwordHash]);
 
         return (int) $pdo->lastInsertId();
+    }
+
+    /** Create an account that signs in exclusively with Google (no password). */
+    public static function createFromGoogle(
+        string $name,
+        string $email,
+        string $googleId,
+        ?string $avatarUrl = null,
+    ): int {
+        $pdo = Database::connection();
+        $pdo->prepare(
+            'INSERT INTO users (name, email, google_id, avatar_url)
+             VALUES (?, ?, ?, ?)',
+        )->execute([$name, $email, $googleId, $avatarUrl]);
+
+        return (int) $pdo->lastInsertId();
+    }
+
+    /** Attach a Google identity to an existing password account. */
+    public static function linkGoogle(int $id, string $googleId, ?string $avatarUrl = null): void
+    {
+        Database::query(
+            'UPDATE users SET google_id = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?',
+            [$googleId, $avatarUrl, $id],
+        );
+    }
+
+    /** Refresh the profile fields Google owns on every sign-in. */
+    public static function updateGoogleProfile(int $id, string $name, ?string $avatarUrl = null): void
+    {
+        Database::query(
+            'UPDATE users SET name = ?, avatar_url = COALESCE(?, avatar_url) WHERE id = ?',
+            [$name, $avatarUrl, $id],
+        );
     }
 
     public static function updateLastLogin(int $id): void
@@ -80,11 +124,14 @@ class User
     public static function public(array $user): array
     {
         return [
-            'id'         => (int) $user['id'],
-            'name'       => $user['name'],
-            'email'      => $user['email'],
-            'role'       => $user['role'] ?? 'user',
-            'created_at' => $user['created_at'] ?? null,
+            'id'           => (int) $user['id'],
+            'name'         => $user['name'],
+            'email'        => $user['email'],
+            'role'         => $user['role'] ?? 'user',
+            'avatar_url'   => $user['avatar_url'] ?? null,
+            'has_password' => !empty($user['password_hash']),
+            'has_google'   => !empty($user['google_id']),
+            'created_at'   => $user['created_at'] ?? null,
         ];
     }
 }
